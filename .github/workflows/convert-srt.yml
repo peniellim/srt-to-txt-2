@@ -16,13 +16,14 @@ jobs:
       - name: Convert SRT files to TXT
         run: |
           find . -name "*.srt" | while IFS= read -r file; do
-           txt_file="${file%.srt}.txt"
-           awk '
-             /^[0-9]+$/ { next }                                        # Skip number lines
-             /^[0-9]{2}:[0-9]{2}:[0-9]{2},/ { next }                    # Skip timestamp lines
-             NF { printf "%s ", $0 }                                    # Print content with space
-             ' "$file" | sed 's/  */ /g' > "$txt_file"
+            txt_file="${file%.srt}.txt"
+            awk '
+              /^[0-9]+$/ { next }
+              /^[0-9]{2}:[0-9]{2}:[0-9]{2},/ { next }
+              NF { gsub(/\r/, ""); printf "%s ", $0 }
+            ' "$file" | awk 'BEGIN{ORS=" "} {print}' | sed 's/  */ /g' > "$txt_file"
           done
+
 
 
       - name: Commit converted TXT files
