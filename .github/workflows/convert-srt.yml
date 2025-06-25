@@ -1,63 +1,32 @@
-name: Convert and Check SRT Files
+name: Convert SRT to Plain TXT
 
 on:
   push:
     paths:
       - '**/*.srt'
 
-permissions:
-  contents: write
-
 jobs:
-  convert-and-check:
+  convert-srt:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout repo
-      uses: actions/checkout@v3
+      - name: Checkout repo
+        uses: actions/checkout@v3
 
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.10'
+      - name: Find and convert all SRT files
+        run: |
+          find . -name "*.srt" | while read file; do
+            txt_file="${file%.srt}.txt"
+            sed -E '/^[0-9]+$/d;/^([0-9]{2}:){2}[0-9]{2},[0-9]{3} -->/d;/^$/d' "$file" \
+              | paste -sd ' ' - > "$txt_file"
+          done
 
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install language-tool-python
-
-    - name: Find and convert all SRT files
-      run: |
-        find . -name "*.srt" | while read file; do
-          txt_file="${file%.srt}.txt"
-          sed -E '/^[0-9]+$/d;/^([0-9]{2}:){2}[0-9]{2},[0-9]{3} -->/d;/^$/d' "$file" \
-            | paste -sd ' ' - > "$txt_file"
-        done
-
-    - name: Run grammar check
-      run: |
-        python3 <<EOF
-        import os
-        import language_tool_python
-
-        tool = language_tool_python.LanguageTool('en-US')
-
-        for root, dirs, files in os.walk("."):
-            for fname in files:
-                if fname.endswith(".txt"):
-                    path = os.path.join(root, fname)
-                    with open(path, "r") as f:
-                        text = f.read()
-                    matches = tool.check(text)
-                    corrected = language_tool_python.utils.correct(text, matches)
-                    with open(path, "w") as f:
-                        f.write(corrected)
-        EOF
-
-    - name: Commit corrected TXT files
-      run: |
-        git config --global user.name "github-actions"
-        git config --global user.email "github-actions@github.com"
-        git add .
-        git commit -m "Auto-convert and correct SRT to TXT" || echo "No changes to commit"
-        git push
+      - name: Commit converted TXT files
+        run: |
+          git config --global user.name "github-actions"
+          git config --global user.email "github-actions@github.com"
+          git add .
+          git commit -m "Convert SRT files to plain TXT" || echo "No changes to commit"
+          git push
+    permissions:
+      contents: write
