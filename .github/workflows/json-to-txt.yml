@@ -1,0 +1,58 @@
+name: Convert JSON to Plain Text and Check Grammar
+
+on:
+  push:
+    paths:
+      - '**/*.json'
+
+jobs:
+  convert-and-check:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write  # Required to commit back the .txt file
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install grammar checker
+        run: |
+          pip install language-tool-python
+
+      - name: Convert JSON to plain text and check grammar
+        run: |
+          import os, json
+          from pathlib import Path
+          import language_tool_python
+
+          tool = language_tool_python.LanguageTool('en-US')
+
+          for json_path in Path('.').rglob('*.json'):
+              with open(json_path, 'r', encoding='utf-8') as f:
+                  try:
+                      data = json.load(f)
+                      plain_text = json.dumps(data, ensure_ascii=False, separators=(',', ':'))
+                      plain_text = plain_text.replace('\n', ' ').replace('\r', '')
+                  except Exception as e:
+                      print(f"Failed to load {json_path}: {e}")
+                      continue
+
+              matches = tool.check(plain_text)
+              corrected = language_tool_python.utils.correct(plain_text, matches)
+
+              txt_path = json_path.with_suffix('.txt')
+              with open(txt_path, 'w', encoding='utf-8') as f:
+                  f.write(corrected)
+
+      - name: Commit TXT files
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git add '*.txt'
+          git commit -m "Convert JSON to plain text and check grammar" || echo "No changes to commit"
+          git push
