@@ -5,6 +5,9 @@ on:
     paths:
       - '**/*.srt'
 
+permissions:
+  contents: write
+
 jobs:
   convert-and-check:
     runs-on: ubuntu-latest
