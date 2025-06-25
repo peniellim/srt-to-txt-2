@@ -15,15 +15,13 @@ jobs:
 
       - name: Find and convert all SRT files
         run: |
-          find . -name "*.srt" | while read file; do
-          txt_file="${file%.srt}.txt"
-          # Remove line numbers, timestamps, empty lines, then join everything with a space:
-          sed -E '/^[0-9]+$/d;/^([0-9]{2}:){2}[0-9]{2},[0-9]{3} -->/d;/^$/d' "$file" \
-            | tr '\n' ' ' \
-            | sed 's/  */ /g' \
-            > "$txt_file"
+          find . -name "*.srt" | while IFS= read -r file; do
+            txt_file="${file%.srt}.txt"
+            sed -E '/^[0-9]+$/d; /^[0-9]{2}:[0-9]{2}:[0-9]{2},[0-9]{3} -->/d; /^$/d' "$file" \
+              | tr '\n' ' ' \
+              | sed 's/  */ /g' \
+              > "$txt_file"
           done
-
 
       - name: Commit converted TXT files
         run: |
@@ -32,5 +30,6 @@ jobs:
           git add .
           git commit -m "Convert SRT files to plain TXT" || echo "No changes to commit"
           git push
+
     permissions:
       contents: write
